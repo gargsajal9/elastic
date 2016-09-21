@@ -4,6 +4,10 @@
 
 package elastic
 
+type Tdigest struct {
+	Compression float64 `json:"compression"`
+}
+
 // PercentilesAggregation
 // See: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-aggregations-metrics-percentile-aggregation.html
 type PercentilesAggregation struct {
@@ -17,6 +21,8 @@ type PercentilesAggregation struct {
 	percentiles     []float64
 	compression     *float64
 	estimator       string
+	version         string
+	tdigest         Tdigest
 }
 
 func NewPercentilesAggregation() PercentilesAggregation {
@@ -25,6 +31,11 @@ func NewPercentilesAggregation() PercentilesAggregation {
 		subAggregations: make(map[string]Aggregation),
 		percentiles:     make([]float64, 0),
 	}
+	return a
+}
+
+func (a PercentilesAggregation) Version(version string) PercentilesAggregation {
+	a.version = version
 	return a
 }
 
@@ -121,7 +132,14 @@ func (a PercentilesAggregation) Source() interface{} {
 		opts["percents"] = a.percentiles
 	}
 	if a.compression != nil {
-		opts["compression"] = *a.compression
+		if a.version == "2.3.3" {
+			data := Tdigest{
+				Compression: *a.compression,
+			}
+			opts["tdigest"] = data
+		} else {
+			opts["compression"] = *a.compression
+		}
 	}
 	if a.estimator != "" {
 		opts["estimator"] = a.estimator
